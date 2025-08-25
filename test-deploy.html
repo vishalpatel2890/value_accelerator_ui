@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Deploy</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 300px; padding: 8px; margin-bottom: 10px; }
+        button { padding: 10px 20px; background: #007cba; color: white; border: none; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .logs { background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; margin-top: 10px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>GitHub Deployment Test</h1>
+    
+    <form id="deployForm">
+        <div class="form-group">
+            <label>GitHub Personal Access Token:</label>
+            <input type="password" id="github_token" placeholder="ghp_..." required>
+        </div>
+        
+        <div class="form-group">
+            <label>Repository Name:</label>
+            <input type="text" id="repo_name" placeholder="my-deployment" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Package:</label>
+            <select id="package_name" required>
+                <option value="">Select package...</option>
+                <option value="retail-starter-pack">Retail Starter Pack</option>
+                <option value="qsr-starter-pack">QSR Starter Pack</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Project Name:</label>
+            <input type="text" id="project_name" placeholder="my-project" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Organization (optional):</label>
+            <input type="text" id="organization" placeholder="my-org">
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="create_ruleset" checked> Create repository rulesets (branch protection)
+            </label>
+        </div>
+        
+        <h3>TD Credentials (for variables)</h3>
+        <div class="form-group">
+            <label>TD API Key:</label>
+            <input type="password" id="td_api_key" placeholder="12345/abcdef...">
+        </div>
+        
+        <div class="form-group">
+            <label>TD Region:</label>
+            <select id="td_region">
+                <option value="us01">US (us01)</option>
+                <option value="eu01">EU (eu01)</option>
+            </select>
+        </div>
+        
+        <h3>Environment Secrets (optional)</h3>
+        <div class="form-group">
+            <label>Production TD API Token:</label>
+            <input type="password" id="env_prod" placeholder="12345/abcdef...">
+        </div>
+        
+        <div class="form-group">
+            <label>QA TD API Token:</label>
+            <input type="password" id="env_qa" placeholder="12345/abcdef...">
+        </div>
+        
+        <div class="form-group">
+            <label>Development TD API Token:</label>
+            <input type="password" id="env_dev" placeholder="12345/abcdef...">
+        </div>
+        
+        <button type="submit">Deploy to GitHub</button>
+    </form>
+    
+    <div id="result"></div>
+    <div id="logs"></div>
+
+    <script>
+        const form = document.getElementById('deployForm');
+        const resultDiv = document.getElementById('result');
+        const logsDiv = document.getElementById('logs');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                github_token: document.getElementById('github_token').value,
+                repo_name: document.getElementById('repo_name').value,
+                package_name: document.getElementById('package_name').value,
+                project_name: document.getElementById('project_name').value,
+                organization: document.getElementById('organization').value || undefined,
+                create_ruleset: document.getElementById('create_ruleset').checked,
+                environment_secrets: {
+                    prod: document.getElementById('env_prod').value || null,
+                    qa: document.getElementById('env_qa').value || null,
+                    dev: document.getElementById('env_dev').value || null
+                },
+                td_credentials: document.getElementById('td_api_key').value ? {
+                    apiKey: document.getElementById('td_api_key').value,
+                    region: document.getElementById('td_region').value,
+                    environmentTokens: {
+                        prod: document.getElementById('env_prod').value || null,
+                        qa: document.getElementById('env_qa').value || null,
+                        dev: document.getElementById('env_dev').value || null
+                    }
+                } : null
+            };
+            
+            resultDiv.innerHTML = '<div>🚀 Deploying...</div>';
+            logsDiv.innerHTML = '';
+            
+            try {
+                console.log('Starting deployment with data:', formData);
+                
+                const response = await fetch('http://localhost:8000/api/github/copy-package', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const result = await response.json();
+                console.log('Response data:', result);
+                
+                if (response.ok) {
+                    let extraInfo = '';
+                    
+                    if (result.ruleset) {
+                        extraInfo += `<p><strong>Rulesets:</strong> ${result.ruleset.status === 'success' ? '✅' : '⚠️'} ${result.ruleset.message}</p>`;
+                    }
+                    
+                    if (result.secrets && result.secrets.length > 0) {
+                        const successfulSecrets = result.secrets.filter(s => s.status === 'success').map(s => s.environment);
+                        if (successfulSecrets.length > 0) {
+                            extraInfo += `<p><strong>Environment Secrets:</strong> ✅ Created for ${successfulSecrets.join(', ')}</p>`;
+                        }
+                    }
+                    
+                    if (result.variables && result.variables.length > 0) {
+                        const successfulVars = result.variables.filter(v => v.status === 'success').map(v => v.variable);
+                        if (successfulVars.length > 0) {
+                            extraInfo += `<p><strong>Repository Variables:</strong> ✅ Created ${successfulVars.join(', ')}</p>`;
+                        }
+                    }
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Deployment Successful!</h3>
+                            <p><strong>Message:</strong> ${result.message}</p>
+                            <p><strong>Files Deployed:</strong> ${result.total_files}</p>
+                            <p><strong>Repository:</strong> <a href="${result.repository_url}" target="_blank">${result.repository_url}</a></p>
+                            ${extraInfo}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Deployment Failed</h3>
+                            <p><strong>Error:</strong> ${result.detail || 'Unknown error'}</p>
+                        </div>
+                    `;
+                }
+                
+                // Log the full response for debugging
+                logsDiv.innerHTML = `<div class="logs">Server Response:\n${JSON.stringify(result, null, 2)}</div>`;
+                
+            } catch (error) {
+                console.error('Deployment error:', error);
+                
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Request Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+                
+                logsDiv.innerHTML = `<div class="logs">Client Error:\n${error.toString()}</div>`;
+            }
+        });
+        
+        // Test server connection on page load
+        fetch('http://localhost:8000/api/github/packages')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Server connection successful:', data);
+                const packages = data.packages;
+                const select = document.getElementById('package_name');
+                select.innerHTML = '<option value="">Select package...</option>';
+                packages.forEach(pkg => {
+                    const option = document.createElement('option');
+                    option.value = pkg.id;
+                    option.textContent = pkg.name;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('❌ Server connection failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Server Connection Failed</h3>
+                        <p>Cannot connect to backend server at localhost:8000</p>
+                        <p>Make sure the server is running.</p>
+                    </div>
+                `;
+            });
+    </script>
+</body>
+</html>
