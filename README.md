@@ -2,6 +2,31 @@
 
 A React + Python web application that allows users to deploy Treasure Data starter pack workflows through a guided interface.
 
+## 📁 Project Structure
+
+```
+td-value-accelerator-ui/
+├── src/                # Frontend React application
+├── server/            # Backend FastAPI server
+├── docs/              # Documentation files
+├── tests/             # Test scripts
+└── README.md          # This file
+```
+
+## 📚 Documentation
+
+All documentation has been organized in the `docs/` folder:
+- [Quick Start Guide](./docs/QUICKSTART.md)
+- [Deployment Guide](./docs/DEPLOYMENT_README.md) 
+- [Troubleshooting](./docs/TROUBLESHOOTING.md)
+- [All Documentation](./docs/README.md)
+
+## 🧪 Testing
+
+Test scripts are located in the `tests/` folder:
+- [Test Documentation](./tests/README.md)
+- Run deployment tests with `python tests/test_deployment.py`
+
 ## Features
 
 - **Configuration Screen**: Test TD connectivity and configure credentials
@@ -25,6 +50,8 @@ A React + Python web application that allows users to deploy Treasure Data start
 - GitHub repository integration
 
 ## Quick Start
+
+For detailed setup instructions, see the [Quick Start Guide](./docs/QUICKSTART.md).
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -75,10 +102,10 @@ A React + Python web application that allows users to deploy Treasure Data start
 3. **Deployment**: Configure parameters and deploy workflows
 4. **Monitor**: Watch real-time deployment progress and logs
 
-## Project Structure
+## Detailed Project Structure
 
 ```
-td-value-accelerator/
+td-value-accelerator-ui/
 ├── src/                          # Frontend React app
 │   ├── components/
 │   │   ├── shared/              # Reusable UI components
@@ -94,6 +121,13 @@ td-value-accelerator/
 │   ├── services/                # Business logic services
 │   ├── models/                  # Pydantic models
 │   └── main.py                  # FastAPI app entry point
+├── docs/                        # Documentation
+│   ├── QUICKSTART.md           # Quick start guide
+│   ├── DEPLOYMENT_README.md    # Deployment documentation
+│   └── TROUBLESHOOTING.md      # Common issues
+├── tests/                       # Test scripts
+│   ├── test_deployment.py      # Deployment API tests
+│   └── README.md               # Test documentation
 └── public/                      # Static assets
 ```
 
@@ -110,10 +144,8 @@ td-value-accelerator/
 - `GET /api/github/pack-files/{pack_name}` - Get pack files
 
 ### Deployment
-- `POST /api/deployment/configure` - Configure deployment
-- `POST /api/deployment/deploy` - Start deployment
-- `GET /api/deployment/status/{deployment_id}` - Get deployment status
-- `WebSocket /api/deployment/logs/{deployment_id}` - Real-time logs
+- `POST /api/deploy/create` - Create and deploy to GitHub repository
+- `GET /api/deploy/packages` - List available starter packages
 
 ## Configuration
 

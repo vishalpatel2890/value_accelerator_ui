@@ -18,7 +18,7 @@ from logging_config import logger
 # Route all print statements through the configured logger
 builtins.print = lambda *args, **kwargs: logger.info(" ".join(str(a) for a in args))
 
-from routers import td_mcp, github, deployment, simple_github
+from routers import td_mcp, github, deployment
 
 app = FastAPI(
     title="TD Value Accelerator API",
@@ -95,8 +95,7 @@ async def log_requests(request: Request, call_next):
 
 app.include_router(td_mcp.router, prefix="/api/td", tags=["TD MCP"])
 app.include_router(github.router, prefix="/api/github", tags=["GitHub"])
-app.include_router(simple_github.router, prefix="/api/simple", tags=["Simple Deploy"])
-app.include_router(deployment.router, prefix="/api/deployment", tags=["Deployment"])
+app.include_router(deployment.router, prefix="/api/deploy", tags=["Deployment"])
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
