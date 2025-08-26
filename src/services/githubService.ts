@@ -300,41 +300,55 @@ export class GitHubService {
         github_token: '[REDACTED]', // Don't log the actual token
       }
     });
-    
-    const response = await fetch('http://localhost:8000/api/simple/copy-package', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestPayload),
-    });
 
-    console.log('📡 API Response Status:', response.status, response.statusText);
-    console.log('📡 API Response Headers:', Object.fromEntries(response.headers.entries()));
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-    if (!response.ok) {
-      let errorMessage = 'Failed to copy package files';
-      try {
-        const errorData = await response.json();
-        console.error('❌ API Error Response:', errorData);
-        if (errorData.detail) {
-          // Extract the actual error message from the server response
-          errorMessage = errorData.detail;
-        } else {
-          errorMessage = `Failed to copy package files: ${JSON.stringify(errorData)}`;
+    try {
+      const response = await fetch('http://localhost:8000/api/simple/copy-package', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
+      });
+
+      console.log('📡 API Response Status:', response.status, response.statusText);
+      console.log('📡 API Response Headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to copy package files';
+        try {
+          const errorData = await response.json();
+          console.error('❌ API Error Response:', errorData);
+          if (errorData.detail) {
+            // Extract the actual error message from the server response
+            errorMessage = errorData.detail;
+          } else {
+            errorMessage = `Failed to copy package files: ${JSON.stringify(errorData)}`;
+          }
+        } catch {
+          // If JSON parsing fails, fall back to text
+          const errorText = await response.text();
+          console.error('❌ API Error Text Response:', errorText);
+          errorMessage = `Failed to copy package files: ${errorText}`;
         }
-      } catch {
-        // If JSON parsing fails, fall back to text
-        const errorText = await response.text();
-        console.error('❌ API Error Text Response:', errorText);
-        errorMessage = `Failed to copy package files: ${errorText}`;
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    const result = await response.json();
-    console.log('✅ API Success Response:', result);
-    return result;
+      const result = await response.json();
+      console.log('✅ API Success Response:', result);
+      return result;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request Timeout: Deployment API did not respond in time');
+      }
+      console.error('❌ API Request Failed:', error);
+      throw new Error('Network Error: Unable to connect to deployment API');
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async getCopyProgress(sessionId: string) {
