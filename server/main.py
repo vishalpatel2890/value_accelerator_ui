@@ -44,17 +44,8 @@ async def log_requests(request: Request, call_next):
     client_host = request.client.host if request.client else "unknown"
     logger.info(f"[{request_id}] {request.method} {request.url.path} from {client_host}")
     
-    # Log request body for POST requests
-    if request.method == "POST":
-        try:
-            body = await request.body()
-            if body:
-                json_body = json.loads(body.decode())
-                logger.info(f"[{request_id}] Request body keys: {list(json_body.keys())}")
-                # Log full body for debugging (be careful with sensitive data)
-                logger.debug(f"[{request_id}] Full request body: {json_body}")
-        except Exception as e:
-            logger.warning(f"[{request_id}] Could not parse request body: {e}")
+    # Note: We can't safely read request body in middleware without consuming it
+    # The request body will be logged in the endpoint functions instead
 
     # Process the request and capture any errors
     try:

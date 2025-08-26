@@ -6,6 +6,8 @@ import shutil
 import tempfile
 import subprocess
 import base64
+import logging
+from logging_config import logger
 
 router = APIRouter()
 
@@ -15,8 +17,8 @@ class EnvironmentSecrets(BaseModel):
     dev: str = None
 
 class TDCredentials(BaseModel):
-    apiKey: str
-    region: str
+    apiKey: str = None
+    region: str = None
     environmentTokens: dict = None
 
 class SimpleDeployRequest(BaseModel):
@@ -152,7 +154,7 @@ def create_environment_secrets(token: str, owner: str, repo: str, environment_se
             }
             
             env_data = {"wait_timer": 0, "reviewers": [], "deployment_branch_policy": None}
-            env_response = requests.put(env_url, headers=env_headers, json=env_data, timeout=10)
+            requests.put(env_url, headers=env_headers, json=env_data, timeout=10)
             
             # Get public key for encryption
             public_key_url = f"https://api.github.com/repos/{owner}/{repo}/environments/{env_name}/secrets/public-key"
@@ -240,8 +242,8 @@ def create_repository_variables(token: str, owner: str, repo: str, project_name:
 @router.post("/copy-package")
 async def copy_package(request: SimpleDeployRequest):
     """Simple deployment that actually works"""
-    import logging
-    logger = logging.getLogger("va_server")
+    logger.info(f"🚀 ENDPOINT REACHED - Simple deployment starting")
+    logger.info(f"   Request received successfully!")
     
     logger.info(f"🚀 STARTING SIMPLE DEPLOYMENT")
     logger.info(f"   Repo: {request.repo_name}")
@@ -401,7 +403,7 @@ async def copy_package(request: SimpleDeployRequest):
             
             # Count files
             file_count = 0
-            for root, dirs, files in os.walk(temp_dir):
+            for root, _, files in os.walk(temp_dir):
                 if '.git' not in root:
                     file_count += len(files)
             
@@ -502,3 +504,16 @@ async def get_packages():
 async def test_endpoint():
     """Test endpoint to verify API is working"""
     return {"message": "Simple GitHub router is working", "status": "ok"}
+
+@router.post("/test-simple")
+async def test_simple_post(data: dict):
+    """Test POST endpoint with no validation"""
+    logger.info(f"Test endpoint received: {data}")
+    return {"received": data, "status": "success"}
+
+@router.post("/test-model")
+async def test_model_validation(request: dict):
+    """Test endpoint to verify Pydantic model validation"""
+    logger.info(f"🧪 DICT TEST - Endpoint reached!")
+    logger.info(f"   Received request: {request}")
+    return {"message": "Dict validation successful", "request": request}
