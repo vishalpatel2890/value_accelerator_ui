@@ -7,9 +7,16 @@ import sys
 import os
 import time
 import json
+import uuid
+import builtins
 
 # Add the server directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from logging_config import logger
+
+# Route all print statements through the configured logger
+builtins.print = lambda *args, **kwargs: logger.info(" ".join(str(a) for a in args))
 
 from routers import td_mcp, github, deployment, simple_github
 
@@ -29,31 +36,30 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log HTTP requests for debugging"""
+    """Log HTTP requests with timing and client details"""
+    request_id = str(uuid.uuid4())[:8]
     start_time = time.time()
-    
-    # Log all API requests
+
     if request.url.path.startswith('/api/'):
-        print(f"\n🌐 API REQUEST: {request.method} {request.url.path}")
+        client_host = request.client.host if request.client else "unknown"
+        logger.info(f"[{request_id}] {request.method} {request.url.path} from {client_host}")
         if request.method == "POST":
             try:
                 body = await request.body()
                 if body:
                     json_body = json.loads(body.decode())
-                    print(f"   Data: {list(json_body.keys())}")
+                    logger.debug(f"[{request_id}] Body keys: {list(json_body.keys())}")
             except Exception as e:
-                print(f"   Could not parse request: {e}")
-    
-    # Process the request
+                logger.warning(f"[{request_id}] Could not parse request body: {e}")
+
     response = await call_next(request)
-    
-    # Calculate processing time
     process_time = time.time() - start_time
-    
-    # Log API responses
+
     if request.url.path.startswith('/api/'):
-        print(f"✅ API RESPONSE: {response.status_code} ({process_time:.1f}s)")
-    
+        logger.info(
+            f"[{request_id}] {response.status_code} completed in {process_time:.2f}s"
+        )
+
     return response
 
 app.include_router(td_mcp.router, prefix="/api/td", tags=["TD MCP"])
@@ -63,24 +69,22 @@ app.include_router(deployment.router, prefix="/api/deployment", tags=["Deploymen
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors with detailed logging"""
-    print(f"=== VALIDATION ERROR ===")
-    print(f"Request URL: {request.url}")
-    print(f"Request method: {request.method}")
-    
+    """Handle validation errors with structured logging"""
+    request_id = str(uuid.uuid4())[:8]
+    logger.error(f"[{request_id}] Validation error on {request.method} {request.url}")
+
     try:
         body = await request.body()
-        print(f"Request body: {body.decode()}")
-    except:
-        print("Could not read request body")
-    
-    print(f"Validation errors: {exc.errors()}")
-    print(f"========================")
-    
+        logger.error(f"[{request_id}] Request body: {body.decode()}")
+    except Exception:
+        logger.error(f"[{request_id}] Could not read request body")
+
+    logger.error(f"[{request_id}] Errors: {exc.errors()}")
+
     return JSONResponse(
         status_code=422,
         content={
-            "detail": f"Validation error: {exc.errors()}", 
+            "detail": f"Validation error: {exc.errors()}",
             "errors": exc.errors()
         }
     )
