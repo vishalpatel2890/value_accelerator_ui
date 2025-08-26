@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 import os
 import subprocess
 import tempfile
@@ -414,27 +415,33 @@ async def create_deployment(request: dict):
                     error_msg = f"Failed to create {len(failed_secrets)} environment secrets"
                     logger.error(f"❌ {error_msg}")
                     # Return immediately with error status
-                    return {
-                        "success": False,
-                        "repository_url": repo_url,
-                        "message": error_msg,
-                        "details": details,
-                        "errors": [error_msg],
-                        "warnings": warnings
-                    }
+                    return JSONResponse(
+                        status_code=500,
+                        content={
+                            "success": False,
+                            "repository_url": repo_url,
+                            "message": error_msg,
+                            "details": details,
+                            "errors": [error_msg],
+                            "warnings": warnings,
+                        },
+                    )
             except HTTPException:
                 raise
             except Exception as e:
                 logger.error(f"❌ Failed to create secrets: {str(e)}")
                 # Return immediately with error status
-                return {
-                    "success": False,
-                    "repository_url": repo_url,
-                    "message": f"Failed to create environment secrets: {str(e)}",
-                    "details": details,
-                    "errors": [f"Failed to create environment secrets: {str(e)}"],
-                    "warnings": warnings
-                }
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "repository_url": repo_url,
+                        "message": f"Failed to create environment secrets: {str(e)}",
+                        "details": details,
+                        "errors": [f"Failed to create environment secrets: {str(e)}"],
+                        "warnings": warnings,
+                    },
+                )
         
         # Step 5: Create variables (if TD API key provided)
         if td_api_key:
@@ -448,27 +455,33 @@ async def create_deployment(request: dict):
                     error_msg = f"Failed to create {len(failed_vars)} repository variables"
                     logger.error(f"❌ {error_msg}")
                     # Return immediately with error status
-                    return {
-                        "success": False,
-                        "repository_url": repo_url,
-                        "message": error_msg,
-                        "details": details,
-                        "errors": [error_msg],
-                        "warnings": warnings
-                    }
+                    return JSONResponse(
+                        status_code=500,
+                        content={
+                            "success": False,
+                            "repository_url": repo_url,
+                            "message": error_msg,
+                            "details": details,
+                            "errors": [error_msg],
+                            "warnings": warnings,
+                        },
+                    )
             except HTTPException:
                 raise
             except Exception as e:
                 logger.error(f"❌ Failed to create variables: {str(e)}")
                 # Return immediately with error status
-                return {
-                    "success": False,
-                    "repository_url": repo_url,
-                    "message": f"Failed to create repository variables: {str(e)}",
-                    "details": details,
-                    "errors": [f"Failed to create repository variables: {str(e)}"],
-                    "warnings": warnings
-                }
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "repository_url": repo_url,
+                        "message": f"Failed to create repository variables: {str(e)}",
+                        "details": details,
+                        "errors": [f"Failed to create repository variables: {str(e)}"],
+                        "warnings": warnings,
+                    },
+                )
         
         # Step 6: Create rulesets (if requested)
         if create_rulesets:
@@ -487,27 +500,33 @@ async def create_deployment(request: dict):
                     error_msg = f"Failed to create {len(failed_rulesets)} repository rulesets"
                     logger.error(f"❌ {error_msg}")
                     # Return immediately with error status
-                    return {
-                        "success": False,
-                        "repository_url": repo_url,
-                        "message": error_msg,
-                        "details": details,
-                        "errors": [error_msg],
-                        "warnings": warnings
-                    }
+                    return JSONResponse(
+                        status_code=500,
+                        content={
+                            "success": False,
+                            "repository_url": repo_url,
+                            "message": error_msg,
+                            "details": details,
+                            "errors": [error_msg],
+                            "warnings": warnings,
+                        },
+                    )
             except HTTPException:
                 raise
             except Exception as e:
                 logger.error(f"❌ Failed to create rulesets: {str(e)}")
                 # Return immediately with error status
-                return {
-                    "success": False,
-                    "repository_url": repo_url,
-                    "message": f"Failed to create repository rulesets: {str(e)}",
-                    "details": details,
-                    "errors": [f"Failed to create repository rulesets: {str(e)}"],
-                    "warnings": warnings
-                }
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "repository_url": repo_url,
+                        "message": f"Failed to create repository rulesets: {str(e)}",
+                        "details": details,
+                        "errors": [f"Failed to create repository rulesets: {str(e)}"],
+                        "warnings": warnings,
+                    },
+                )
         
         # If we reach here, deployment was successful
         logger.info(f"✅ Deployment completed successfully!")
