@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/lib/ui-components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/lib/ui-components/ui/alert';
 import { Button } from '@/lib/ui-components/ui/button';
@@ -81,7 +81,7 @@ export function SimpleDeploymentProgress({ deploymentRequest, onComplete, onRetr
   const [repoUrl, setRepoUrl] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(true);
   const [deploymentDetails, setDeploymentDetails] = useState<any>({});
-  const [deploymentStarted, setDeploymentStarted] = useState(false);
+  const deploymentStartedRef = useRef(false);
 
   const updateStepStatus = (stepId: string, status: DeploymentStep['status']) => {
     setSteps(prev => prev.map(step => 
@@ -95,11 +95,11 @@ export function SimpleDeploymentProgress({ deploymentRequest, onComplete, onRetr
 
   const runDeployment = async () => {
     // Prevent duplicate deployments
-    if (deploymentStarted) {
+    if (deploymentStartedRef.current) {
       return;
     }
-    
-    setDeploymentStarted(true);
+
+    deploymentStartedRef.current = true;
     setIsDeploying(true);
     setError('');
     setWarnings([]);
@@ -260,11 +260,9 @@ export function SimpleDeploymentProgress({ deploymentRequest, onComplete, onRetr
     const abortController = new AbortController();
     
     const startDeployment = async () => {
-      if (!deploymentStarted) {
-        await runDeployment();
-      }
+      await runDeployment();
     };
-    
+
     startDeployment();
     
     return () => {
