@@ -12,10 +12,12 @@ import {
   FolderPlus, 
   Key, 
   Settings,
-  ShieldCheck, 
+  ShieldCheck,
   GitBranch,
-  ExternalLink 
+  ExternalLink
 } from 'lucide-react';
+
+let hasRunDeployment = false;
 
 // Troubleshooting guide component
 const TroubleshootingGuide = ({ errorMessage }: { errorMessage: string }) => {
@@ -167,7 +169,6 @@ export function GitHubDeploymentProgress({ config, onComplete }: GitHubDeploymen
   ]);
 
   const [repoUrl, setRepoUrl] = useState<string>('');
-  const [deploymentStarted, setDeploymentStarted] = useState(false);
   const [currentError, setCurrentError] = useState<string>('');
 
   const updateStepStatus = (stepId: string, status: DeploymentStep['status'], error?: string) => {
@@ -304,11 +305,11 @@ export function GitHubDeploymentProgress({ config, onComplete }: GitHubDeploymen
   };
 
   useEffect(() => {
-    if (!deploymentStarted) {
-      setDeploymentStarted(true);
+    if (!hasRunDeployment) {
+      hasRunDeployment = true;
       runDeployment();
     }
-  }, []); // Empty dependency array to run only once
+  }, []);
 
   const getStepIcon = (step: DeploymentStep) => {
     switch (step.status) {
@@ -354,7 +355,6 @@ export function GitHubDeploymentProgress({ config, onComplete }: GitHubDeploymen
                 // Reset all steps to pending state
                 setSteps(prev => prev.map(step => ({ ...step, status: 'pending', error: undefined })));
                 setCurrentError('');
-                setDeploymentStarted(false);
                 // Restart deployment
                 runDeployment();
               }}
