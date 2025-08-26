@@ -240,16 +240,22 @@ def create_repository_variables(token: str, owner: str, repo: str, project_name:
 @router.post("/copy-package")
 async def copy_package(request: SimpleDeployRequest):
     """Simple deployment that actually works"""
-    print(f"\n🚀 STARTING SIMPLE DEPLOYMENT")
-    print(f"   Repo: {request.repo_name}")
-    print(f"   Package: {request.package_name}")
-    print(f"   Project: {request.project_name}")
+    import logging
+    logger = logging.getLogger("va_server")
+    
+    logger.info(f"🚀 STARTING SIMPLE DEPLOYMENT")
+    logger.info(f"   Repo: {request.repo_name}")
+    logger.info(f"   Package: {request.package_name}")
+    logger.info(f"   Project: {request.project_name}")
+    logger.info(f"   Organization: {request.organization}")
+    logger.info(f"   Session ID: {request.session_id}")
+    logger.info(f"   Create Ruleset: {request.create_ruleset}")
     
     try:
         # Step 1: Validate GitHub token
-        print("Step 1: Validating GitHub token...")
-        print(f"   Token length: {len(request.github_token)} characters")
-        print(f"   Organization: {request.organization}")
+        logger.info("Step 1: Validating GitHub token...")
+        logger.info(f"   Token length: {len(request.github_token)} characters")
+        logger.info(f"   Organization: {request.organization}")
         
         headers = {
             'Authorization': f'Bearer {request.github_token}',
@@ -257,12 +263,12 @@ async def copy_package(request: SimpleDeployRequest):
         }
         
         try:
-            print("   Making request to GitHub API...")
+            logger.info("   Making request to GitHub API...")
             user_response = requests.get("https://api.github.com/user", headers=headers, timeout=10)
-            print(f"   GitHub API responded with status: {user_response.status_code}")
+            logger.info(f"   GitHub API responded with status: {user_response.status_code}")
             
             if not user_response.ok:
-                print(f"   GitHub API error response: {user_response.text}")
+                logger.error(f"   GitHub API error response: {user_response.text}")
                 if user_response.status_code == 401:
                     raise HTTPException(status_code=401, detail="Invalid GitHub token. Please check your Personal Access Token.")
                 elif user_response.status_code == 403:
@@ -272,19 +278,19 @@ async def copy_package(request: SimpleDeployRequest):
             
             user_data = user_response.json()
             owner = request.organization or user_data['login']
-            print(f"✅ GitHub token valid for user: {user_data['login']}")
+            logger.info(f"✅ GitHub token valid for user: {user_data['login']}")
             
         except requests.exceptions.Timeout:
-            print("❌ GitHub API request timed out")
+            logger.error("❌ GitHub API request timed out")
             raise HTTPException(status_code=408, detail="GitHub API request timed out. Please check your internet connection.")
         except requests.exceptions.ConnectionError:
-            print("❌ Could not connect to GitHub API")
+            logger.error("❌ Could not connect to GitHub API")
             raise HTTPException(status_code=503, detail="Could not connect to GitHub API. Please check your internet connection.")
         except requests.exceptions.RequestException as e:
-            print(f"❌ GitHub API request failed: {e}")
+            logger.error(f"❌ GitHub API request failed: {e}")
             raise HTTPException(status_code=500, detail=f"GitHub API request failed: {str(e)}")
         except Exception as e:
-            print(f"❌ Unexpected error during GitHub validation: {e}")
+            logger.error(f"❌ Unexpected error during GitHub validation: {e}")
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
         
         # Step 2: Create GitHub repository

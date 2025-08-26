@@ -36,29 +36,69 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log HTTP requests with timing and client details"""
+    """Log ALL HTTP requests with detailed timing and error capture"""
     request_id = str(uuid.uuid4())[:8]
     start_time = time.time()
 
-    if request.url.path.startswith('/api/'):
-        client_host = request.client.host if request.client else "unknown"
-        logger.info(f"[{request_id}] {request.method} {request.url.path} from {client_host}")
-        if request.method == "POST":
-            try:
-                body = await request.body()
-                if body:
-                    json_body = json.loads(body.decode())
-                    logger.debug(f"[{request_id}] Body keys: {list(json_body.keys())}")
-            except Exception as e:
-                logger.warning(f"[{request_id}] Could not parse request body: {e}")
+    # Log ALL requests, not just /api/
+    client_host = request.client.host if request.client else "unknown"
+    logger.info(f"[{request_id}] {request.method} {request.url.path} from {client_host}")
+    
+    # Log request body for POST requests
+    if request.method == "POST":
+        try:
+            body = await request.body()
+            if body:
+                json_body = json.loads(body.decode())
+                logger.info(f"[{request_id}] Request body keys: {list(json_body.keys())}")
+                # Log full body for debugging (be careful with sensitive data)
+                logger.debug(f"[{request_id}] Full request body: {json_body}")
+        except Exception as e:
+            logger.warning(f"[{request_id}] Could not parse request body: {e}")
 
-    response = await call_next(request)
+    # Process the request and capture any errors
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        logger.error(f"[{request_id}] Unhandled exception during request processing: {e}")
+        logger.error(f"[{request_id}] Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"[{request_id}] Traceback: {traceback.format_exc()}")
+        raise
+    
     process_time = time.time() - start_time
 
-    if request.url.path.startswith('/api/'):
-        logger.info(
-            f"[{request_id}] {response.status_code} completed in {process_time:.2f}s"
-        )
+    # Log ALL responses with detailed status information
+    status_level = "ERROR" if response.status_code >= 400 else "INFO"
+    log_func = logger.error if response.status_code >= 400 else logger.info
+    
+    log_func(f"[{request_id}] {response.status_code} {request.method} {request.url.path} completed in {process_time:.3f}s")
+    
+    # For error responses, try to log the response body
+    if response.status_code >= 400:
+        try:
+            # This is tricky because response body can only be read once
+            response_body = b""
+            async for chunk in response.body_iterator:
+                response_body += chunk
+            
+            # Try to decode and log error response
+            try:
+                error_content = json.loads(response_body.decode())
+                logger.error(f"[{request_id}] Error response: {error_content}")
+            except:
+                logger.error(f"[{request_id}] Error response (raw): {response_body.decode()[:500]}")
+            
+            # Recreate the response since we consumed the body
+            from fastapi.responses import Response
+            response = Response(
+                content=response_body,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.media_type
+            )
+        except Exception as e:
+            logger.error(f"[{request_id}] Could not log error response body: {e}")
 
     return response
 
